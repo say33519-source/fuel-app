@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=640, viewport-fit=cover" />
-    <title>تطبيق وقودي - عرض جدول توزيع الوقود ⛽</title>
+    <title>وقودي - جدول توزيع الوقود والبطاقة الوقودية ⛽</title>
     <meta name="description" content="متابعة دورات البطاقة الوقودية (5 أيام) مع عداد وتنبيهات - يعمل بدون إنترنت" />
     <meta name="theme-color" content="#030712" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -552,6 +552,12 @@ header svg.lucide-fuel{width:40px!important;height:40px!important;stroke-width:2
 header div:has(>div>svg.lucide-fuel){width:56px!important;height:56px!important}
 /* 5) شاشة الإقلاع: صورة الأيقونة نفسها */
 #boot .bootlogo{width:118px;height:118px;border-radius:28px;box-shadow:0 0 40px rgba(0,255,213,.3),0 0 60px rgba(255,43,214,.2)}
+
+/* عدّاد المستخدمين */
+#wq-users{display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:6px 14px;border-radius:999px;font-size:12px;font-weight:900;color:#fff;
+ background:linear-gradient(180deg,rgba(255,255,255,.3),rgba(255,255,255,0) 55%),linear-gradient(145deg,#38bdf8,#6366f1 55%,#a855f7);
+ border:1.5px solid rgba(255,255,255,.55);box-shadow:0 4px 0 #312e81,0 8px 18px rgba(99,102,241,.45);text-shadow:0 1px 2px rgba(0,0,0,.4)}
+#wq-users b{font-size:14px;letter-spacing:.3px}
 </style>
 <script>
 (function(){
@@ -676,5 +682,52 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 })();
 </script>
 
+<script>
+/* عدّاد المستخدمين: يقرأ اسم حسابك من counter.txt */
+(function(){
+var CK='wq-users-cache',FL='wq-counted';
+function ls(f){try{return f()}catch(e){return null}}
+function show(n){
+  if(!(n>0))return;
+  var f=document.querySelector('footer');if(!f)return;
+  var d=document.getElementById('wq-users');
+  if(!d){d=document.createElement('div');d.id='wq-users';f.appendChild(d)}
+  d.innerHTML='👥 <span>مستخدمو التطبيق:</span> <b>'+n.toLocaleString('en-US')+'</b>';
+}
+var cur=0;
+function keep(){if(cur)show(cur)}
+function tryUrls(urls,i){
+  if(i>=urls.length)return;
+  fetch(urls[i],{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(j){
+    var n=parseInt(String(j.count).replace(/\D/g,''),10);
+    if(!(n>=0))throw 0;
+    cur=n;ls(function(){localStorage.setItem(CK,String(n))});show(n);
+  }).catch(function(){tryUrls(urls,i+1)});
+}
+function start(code){
+  var host='https://'+code+'.goatcounter.com';
+  var sc=document.createElement('script');sc.async=true;
+  sc.setAttribute('data-goatcounter',host+'/count');sc.src='https://gc.zgo.at/count.js';
+  sc.onload=function(){
+    if(ls(function(){return localStorage.getItem(FL)}))return;
+    try{window.goatcounter.count({path:'new-user',title:'مستخدم جديد',event:true});ls(function(){localStorage.setItem(FL,'1')})}catch(e){}
+  };
+  document.head.appendChild(sc);
+  tryUrls([host+'/counter//new-user.json',host+'/counter/new-user.json'],0);
+}
+var c=parseInt(ls(function(){return localStorage.getItem(CK)})||'0',10)||0;
+if(c){cur=c}
+new MutationObserver(function(){if(cur&&!document.getElementById('wq-users'))show(cur)}).observe(document.body,{childList:true,subtree:true});
+function boot(){
+  keep();
+  fetch('counter.txt',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.text()}).then(function(t){
+    var line=t.split(/\r?\n/).map(function(x){return x.trim()}).filter(function(x){return x&&x[0]!=='#'})[0]||'';
+    var code=line.toLowerCase().replace(/[^a-z0-9-]/g,'');
+    if(code)start(code);
+  }).catch(function(){});
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else setTimeout(boot,1500);
+})();
+</script>
 </body>
 </html>
